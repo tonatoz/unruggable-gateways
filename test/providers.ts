@@ -71,7 +71,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         //ankr: 'base', // 202405XX: eth_getProof depth is 10000
         //infura: 'base-mainnet', // 20250214: eth_getProof depth is still insufficient
         alchemy: 'base-mainnet', // 20250107 eth_getProof depth now seems OK
-        //drpc: 'base', // 20250115: no eth_getProof
+        drpc: 'base', // 20250115: no eth_getProof
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia
@@ -89,12 +89,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'arbitrum',
         infura: 'arbitrum-mainnet',
         alchemy: 'arb-mainnet',
+        drpc: 'arbitrum',
       },
       {
         chain: CHAINS.ARB_NOVA,
         publicHTTP: 'https://nova.arbitrum.io/rpc',
         ankr: 'arbitrumnova',
         alchemy: 'arbnova-mainnet',
+        drpc: 'arbitrum-nova',
       },
       {
         chain: CHAINS.ARB_SEPOLIA,
@@ -102,6 +104,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'arbitrum_sepolia',
         infura: 'arbitrum-sepolia',
         alchemy: 'arb-sepolia',
+        drpc: 'arbitrum-sepolia',
       },
       {
         // https://docs.scroll.io/en/developers/developer-quickstart/#scroll-mainnet
@@ -110,6 +113,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'scroll',
         infura: 'scroll-mainnet',
         alchemy: 'scroll-mainnet',
+        drpc: 'scroll',
       },
       {
         chain: CHAINS.SCROLL_SEPOLIA,
@@ -117,12 +121,16 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'scroll_sepolia_testnet',
         infura: 'scroll-sepolia',
         alchemy: 'scroll-sepolia',
+        drpc: 'scroll-sepolia',
       },
       {
         // https://docs.taiko.xyz/network-reference/rpc-configuration#taiko-mainnet
         chain: CHAINS.TAIKO,
         publicHTTP: 'https://rpc.mainnet.taiko.xyz',
         ankr: 'taiko',
+        infura: 'taiko-mainnet',
+        alchemy: 'taiko-mainnet',
+        drpc: 'taiko',
       },
       {
         chain: CHAINS.TAIKO_HEKLA,
@@ -440,7 +448,7 @@ export function providerOrder(chain?: Chain): string[] {
   if (chain) env = process.env[`PROVIDER_ORDER_${chain}`]; // chain specific
   if (!env) env = process.env.PROVIDER_ORDER; // global
   if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
-  return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
+  return ['drpc']; // global default
 }
 
 type ProviderInfo = {
@@ -454,65 +462,15 @@ function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
   // 20240830: so far, alchemy has the best support
-  order ??= providerOrder(chain);
-  for (const type of order) {
-    let apiKey;
-    switch (type) {
-      case 'alchemy': {
-        if (
-          info.alchemy &&
-          (apiKey = process.env.ALCHEMY_KEY) &&
-          (!info.alchemyPremium || !!process.env.ALCHEMY_PREMIUM)
-        ) {
-          return {
-            info,
-            type,
-            url: `https://${info.alchemy}.g.alchemy.com/v2/${apiKey}`,
-            apiKey,
-          };
-        }
-        break;
-      }
-      case 'ankr': {
-        if (info.ankr && (apiKey = process.env.ANKR_KEY)) {
-          return {
-            info,
-            type,
-            url: `https://rpc.ankr.com/${info.ankr}/${apiKey}`,
-            apiKey,
-          };
-        }
-        break;
-      }
-      case 'infura': {
-        if (info.infura && (apiKey = process.env.INFURA_KEY)) {
-          return {
-            info,
-            type,
-            url: `https://${info.infura}.infura.io/v3/${apiKey}`,
-            apiKey,
-          };
-        }
-        break;
-      }
-      case 'drpc': {
-        if (info.drpc && (apiKey = process.env.DRPC_KEY)) {
-          return {
-            info,
-            type,
-            url: `https://lb.drpc.org/ogrpc?network=${info.drpc}&dkey=${apiKey}`,
-            apiKey,
-          };
-        }
-        break;
-      }
-      case 'public': {
-        return { info, type, url: info.publicHTTP };
-      }
-      default: {
-        throw new Error(`unknown provider type: ${type}`);
-      }
-    }
+  // order ??= providerOrder(chain);
+  const apiKey = process.env.DRPC_KEY;
+  if (apiKey) {
+    return {
+      info,
+      type: 'drpc',
+      url: `https://lb.drpc.org/ogrpc?network=${info.drpc}&dkey=${apiKey}`,
+      apiKey,
+    };
   }
   throw new Error(`${chainName(chain)} unsupported by ${order}`);
 }
